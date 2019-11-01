@@ -1,0 +1,12 @@
+"0","# install.packages('devtools')"
+"0","# library(devtools) # not supported on 3.6.1 Ver. "
+"0","# library(RColorBrewer)"
+"0","# install.packages('JLutils')"
+"0","library(JLutils)"
+"2","필요한 패키지를 로딩중입니다: ggplot2
+"
+"2","필요한 패키지를 로딩중입니다: plyr
+"
+"2","필요한 패키지를 로딩중입니다: magrittr
+"
+"0","# install_github(""larmarange/JLutils"")"

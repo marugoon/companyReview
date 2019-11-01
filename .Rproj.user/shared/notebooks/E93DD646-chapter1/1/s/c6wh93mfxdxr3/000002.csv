@@ -1,0 +1,2 @@
+"0","fileNm <- str_c('./Company_Review_Data_afreecatv', '.RDS')"
+"0","saveRDS(object = result, file = fileNm)"

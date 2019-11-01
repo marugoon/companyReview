@@ -1,0 +1,181 @@
+---
+title: "company Review - R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# plot(cars)
+rm(list = ls())
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+# install.packages("rvest")
+# install.packages("tidyverse")
+library(httr)
+library(rvest)
+library(tidyverse)
+
+URI <- "https://www.jobplanet.co.kr/users/sign_in"
+
+resp <- POST(url = URI, 
+             body = list('user[email]' = 'marugoon@naver.com',
+                         'user[password]' = 'alsrns77'))
+
+status_code(x = resp)
+
+myCookies <- set_cookies(.cookies = unlist(x = cookies(x = resp)))
+```
+```{r}
+compNm <- "아프리카티비"
+
+URI <- "https://www.jobplanet.co.kr/companies/67144/reviews/%EC%95%84%ED%94%84%EB%A6%AC%EC%B9%B4%ED%8B%B0%EB%B9%84"
+
+resp <- GET(url = URI, config = list(cookies = myCookies))
+
+status_code(x = resp)
+
+reviewCnt <- resp %>%
+    read_html() %>%
+    html_nodes(css = 'li.viewReviews > a > span.num.notranslate') %>%
+    html_text() %>%
+    as.numeric()
+    
+print(x = reviewCnt)
+    
+```
+```{r}
+# resp %>% read_html() %>% html_nodes(css = 'h1.tit') %>% html_text()
+resp %>% read_html() %>% html_nodes(css = 'h1.name') %>% html_text()
+
+items <- resp %>% read_html() %>% html_nodes(css = 'section.content_ty4')
+length(x = items)
+```
+```{r}
+# items %>% html_nodes(xpath = '//*[@id="viewReviewsList"]/div/div/div/section[1]/div/div[2]/div/p[2]') %>% html_text()
+```
+
+
+```{r}
+getHtmlText <- function (x, css, sizeItems) {
+    result <- x %>%
+        html_nodes(css = css) %>%
+        html_text()
+    
+    resultSize = length(result)
+    
+    while (resultSize < sizeItems) {
+      resultSize <- resultSize + 1
+      result[resultSize] <- 'NODATA'
+    }
+
+    return(result)
+}
+
+getHtmlRate <- function (x, css, name) {
+    result <- x %>%
+        html_nodes(css = css) %>%
+        html_attr(name, name) %>%
+        str_remove_all(pattern = '(width:)|(%;)') %>%
+        as.numeric()
+    
+    return(result)
+}
+
+getData <- function (x) {
+  items <- x %>% read_html() %>% html_nodes(css = 'section.content_ty4')
+  
+  sizeItems = length(items)
+  
+  # 웹 데이터를 수집하여 df 객체에 할당
+  df <-
+      data.frame(
+          comName = x %>% read_html() %>% html_nodes(css = 'h1.name') %>% html_text(),
+          # 회사이름 = x %>% read_html() %>% html_node(css = 'h1.name') %>% html_text()
+        # 회사이름 = x %>% read_html() %>% html_node(css = 'h1.name') %>% html_text()
+         comcode = items %>% html_attr(name = 'data-company_id'),
+       #  리뷰코드 = items %>% html_attr(name = 'data-content_id'),
+        reviewCode= items %>% html_attr(name = 'data-content_id'),
+       #  직종구분 = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(2)'),
+       category = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(2)', sizeItems),
+       #  재직상태 = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(4)'),
+        onBoard = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(4)', sizeItems),
+       #  근무지역 = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(6)'),
+       area = getHtmlText(x = items, css = 'div.content_top_ty2 span:nth-child(6)', sizeItems),
+       # 등록일자 = getHtmlText(x = items, css = 'div.content_top_ty2 span.txt2'),
+       regDate = getHtmlText(x = items, css = 'div.content_top_ty2 span.txt2', sizeItems),
+       # 별점평가 = getHtmlRate(x = items, css = 'div.star_score', name = 'style'),
+       starRate = getHtmlRate(x = items, css = 'div.star_score', name = 'style'),
+       # 승진기회 = getHtmlRate(x = items, css = 'dl dd:nth-child(3) div div', name = 'style'),
+       promotChance = getHtmlRate(x = items, css = 'dl dd:nth-child(3) div div', name = 'style'),
+       # 복지급여 = getHtmlRate(x = items, css = 'dl dd:nth-child(5) div div', name = 'style'),
+       welfare = getHtmlRate(x = items, css = 'dl dd:nth-child(5) div div', name = 'style'),
+       # 워라밸   = getHtmlRate(x = items, css = 'dl dd:nth-child(7) div div', name = 'style'),
+        wlValance  = getHtmlRate(x = items, css = 'dl dd:nth-child(7) div div', name = 'style'),
+       # 사내문화 = getHtmlRate(x = items, css = 'dl dd:nth-child(9) div div', name = 'style'),
+       culture = getHtmlRate(x = items, css = 'dl dd:nth-child(9) div div', name = 'style'),
+       # 경영진   = getHtmlRate(x = items, css = 'dl dd:nth-child(11) div div', name = 'style')
+         execMem = getHtmlRate(x = items, css = 'dl dd:nth-child(11) div div', name = 'style'),
+      # 기업장점 = getHtmlText(x = items, css = 'div div div section:nth-child(1) div div.ctbody_col2 div dl dd:nth-child(2) span')
+      comAdv = getHtmlText(x = items, css = 'dl dd:nth-child(2) span', sizeItems),
+      # 기업단점
+      comDisadv = getHtmlText(x = items, css = 'dl dd:nth-child(4) span', sizeItems),
+      # 바라는점 = getHtmlText(x = items, css = 'dl dd:nth-child(6) span')
+      reqPoint = getHtmlText(x = items, css = 'dl dd:nth-child(6) span', sizeItems),
+      # 성장예상 = getHtmlText(x = items, css = 'p.etc_box strong')
+      growth = getHtmlText(x = items, css = 'p.etc_box strong', sizeItems),
+      # 추천여부 = getHtmlText(x = items, css = 'p.txt.recommend.etc_box')
+      recomm = getHtmlText(x = items, css = 'p.txt.recommend.etc_box', sizeItems)
+    )
+  
+  return(df)
+}
+
+pages <- ceiling(x = reviewCnt / 5)
+print(x = pages)
+
+```
+```{r}
+result <- getData(x = resp)
+
+print(result)
+```
+```{r}
+for (page in 2:pages) {
+    
+    startTime <- Sys.time()
+    
+    # cat('[', page, '/', pages, '] 현재 진행 중! ')
+    cat('[', page, '/', pages, '] processing!! ')
+    
+    cURI <- str_c(URI, '?page=', page)
+    
+    resp <- GET(url = cURI, config = list(cookies = myCookies))
+    
+    df <- getData(x = resp)
+    
+    result <- rbind(result, df)
+    
+    endTime <- Sys.time()
+    (endTime - startTime) %>% print()
+    
+    rm(resp, df)
+}
+```
+```{r}
+duplicated(x = result$reviewCode) %>% sum()
+```
+```{r}
+fileNm <- str_c('./Company_Review_Data_afreecatv', '.RDS')
+saveRDS(object = result, file = fileNm)
+```
+

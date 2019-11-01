@@ -1,0 +1,4 @@
+"0",""
+"0","pts <- table(dt$onBoard, dt$starRate) %>% set_colnames(value = str_c('starRate', 1:5)) %>% as.data.frame() %>% set_colnames(value = c('onBoard', 'starRate', 'frequen'))"
+"2","Error in str_c(""starRate"", 1:5) : could not find function ""str_c""
+"

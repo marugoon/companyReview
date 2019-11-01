@@ -1,0 +1,35 @@
+"0","# install.packages('devtools')"
+"0","# library(devtools) # not supported on 3.6.1 Ver. "
+"0","library(RColorBrewer)"
+"0","# install.packages('JLutils')"
+"0","library(JLutils)"
+"2","필요한 패키지를 로딩중입니다: plyr
+"
+"2","-------------------------------------------------------------------------------------------------------------------------------------------
+"
+"2","You have loaded plyr after dplyr - this is likely to cause problems.
+If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+library(plyr); library(dplyr)
+"
+"2","-------------------------------------------------------------------------------------------------------------------------------------------
+"
+"2","
+다음의 패키지를 부착합니다: ‘plyr’
+
+"
+"2","The following object is masked from ‘package:lubridate’:
+
+    here
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise, summarize
+
+"
+"2","The following object is masked from ‘package:purrr’:
+
+    compact
+
+"
+"0","# install_github(""larmarange/JLutils"")"

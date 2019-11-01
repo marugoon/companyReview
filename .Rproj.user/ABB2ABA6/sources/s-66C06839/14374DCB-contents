@@ -1,0 +1,265 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# plot(cars)
+rm(list = ls())
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+# install.packages("tidyverse")
+```
+
+
+```{r}
+# 필요한 패키지를 불러옵니다.
+library(tidyverse)
+library(stringr)
+library(stringi)
+library(lubridate)
+library(magrittr)
+
+# 그래프 제목으로 자주 사용할 회사이름을 지정합니다. 
+compNm <- 'afreecatv'
+
+# RDS 파일을 읽습니다. 
+dt <- readRDS(file = './Company_Review_Data_afreecatv.RDS')
+```
+
+```{r}
+names(dt)
+```
+```{r}
+head(dt)
+```
+
+
+```{r}
+# 별점을 1~5점으로 환산합니다.
+dt[, 8:13] <- sapply(X = dt[, 8:13], FUN = function(x) x / 20)
+
+# 추천여부 컬럼을 '추천'과 '비추'로 변환합니다.
+dt$recomm <- str_extract(string = dt$recomm, pattern = '추천(?= )')
+dt$recomm[is.na(x = dt$recomm) == TRUE] <- '비추'
+
+# 성장예상과 추천여부 컬럼을 범주형으로 변환합니다. 
+dt$growth <- factor(x = dt$growth)
+dt$recomm <- factor(x = dt$recomm)
+
+# 등록일자를 날짜형 벡터로 변환합니다.
+dt$regDate <- as.Date(x = dt$regDate, format = '%Y/%m/%d')
+
+# 등록연도 컬럼을 추가합니다. 
+dt$regYear <- year(dt$regDate)
+```
+```{r}
+# setting flotlib conf.
+mytheme <- theme(
+  panel.grid = element_blank(), 
+  panel.background = element_rect(fill = 'white', color = 'white', size = 1.2), 
+  plot.background = element_blank(), 
+  plot.title = element_text(family = 'NanumGothic', face = 'bold', hjust = 0.5, size = 14),
+  axis.title = element_text(family = 'NanumGothic'), 
+  axis.text.x = element_text(size = 10, face = 'bold'), 
+  axis.text.y = element_text(family = 'NanumGothic'), 
+  axis.ticks = element_blank(), 
+  strip.text.x = element_text(size = 10, face = 'bold', family = 'NanumGothic'), 
+  strip.text.y = element_text(size = 10, face = 'bold', angle = 270, family = 'NanumGothic'), 
+  strip.background.y = element_rect(fill = 'gray80', color = 'white'),
+  legend.title = element_text(family = 'NanumGothic'),
+  legend.text = element_text(family = 'NanumGothic'),
+  legend.position = 'bottom')
+
+
+# 추천/비추 여부 막대그래프를 그립니다.
+drawBarPlot <- function(data, workGb, var) {
+  
+  # 빈도테이블을 생성합니다. 
+  tbl <- data[data$onBoard == workGb, c('comName', var)] %>% table() %>% t()
+
+  # 막대그래프를 그립니다. 
+  bp <- barplot(height = tbl, 
+                ylim = c(0, max(tbl)*1.25), 
+                names.arg = rownames(x = tbl),
+                beside = TRUE, 
+                # legend = TRUE, 
+                main = str_c(workGb, var, sep = ' ') )
+  
+  # 빈도수를 추가합니다. 
+  text(x = bp, y = tbl, labels = tbl, pos = 3)
+}
+
+# 그래픽 파라미터를 설정합니다. 
+par(mfrow = c(2, 2), family = 'NanumGothic', mar = c(5, 4, 4, 2))
+
+# 막대그래프를 그립니다. 
+drawBarPlot(data = dt, workGb = '전직원', var = 'recomm')
+drawBarPlot(data = dt, workGb = '전직원', var = 'growth')
+drawBarPlot(data = dt, workGb = '현직원', var = 'recomm')
+drawBarPlot(data = dt, workGb = '현직원', var = 'growth')
+```
+```{r}
+# install.packages("descr")
+library(descr)
+```
+```{r}
+chisqTest <- function(var1, var2) {
+  
+  # 변수를 설정합니다. 
+  v1 <- eval(expr = parse(text = str_c('dt', var1, sep = '$')))
+  v2 <- eval(expr = parse(text = str_c('dt', var2, sep = '$')))
+  
+  # 빈도테이블을 생성합니다. 
+  tbl <- table(v1, v2)
+  
+  # 교차테이블을 생성합니다. 
+  CrossTable(x = tbl, 
+             expected = TRUE, 
+             prop.r = FALSE, 
+             prop.c = FALSE, 
+             prop.t = FALSE, 
+             prop.chisq = FALSE) %>% 
+    print()
+  
+  # 카이제곱 검정을 실시합니다. 
+  chisq.test(x = tbl) %>% print()
+}
+
+# 재직상태 * 성장예상
+chisqTest(var1 = 'onBoard', var2 = 'growth')
+```
+```{r}
+chisqTest(var1 = 'onBoard', var2 = 'recomm')
+```
+```{r}
+drawBarLinePlot <- function(data, workGb, var) {
+  
+  # 등록연도가 없는 행을 삭제합니다. 
+  data <- data[complete.cases(data$regYear), ]
+  
+  if (var == "growth") {
+    # 성장예상 데이터가 없는 경우(NODATA) 데이터 플임에서 삭제
+    data <- data[!(data$growth == "NODATA"), ]
+  }
+  
+  # 빈도테이블을 생성합니다. 
+  tbl <- data %>% 
+    dplyr::filter(onBoard == workGb & !is.na(eval(expr = parse(text = var)))) %>% 
+    select(c('regYear', var)) %>% 
+    group_by(regYear, eval(expr = parse(text = var))) %>% 
+    summarize(freqen = n()) %>% 
+    mutate(rate = (freqen / sum(freqen) * 100) %>% round(digits = 1L)) 
+  
+  
+  # 두 번째 컬럼명을 var로 변경합니다. 
+  colnames(x = tbl)[2] <- var
+  
+  
+  # 홀수행의 비중을 NA로 치환합니다. 
+  rowNums <- seq(from = 1, to = nrow(x = tbl), by = 2)
+  tbl$rate[rowNums] <- NA
+  
+  # ggplot() 함수를 이용하여 막대그래프를 그립니다.
+  ggplot(data = tbl, 
+         mapping = aes_string(x = 'regYear', y = 'freqen', fill = var)) + 
+    geom_bar(stat = 'identity', position = 'dodge') + 
+    geom_text(mapping = aes(label = freqen), 
+              position = position_dodge(width = 0.9), 
+              vjust = -1) + 
+    geom_line(mapping = aes_string(x = 'regYear', y = 'rate', color = var, group = var), 
+              size = 1.2, 
+              stat = 'identity', 
+              position = position_dodge(width = 0.9)) +
+    geom_point(mapping = aes_string(x = 'regYear', y = 'rate', color = var, group = var), 
+              shape = 21, 
+              fill = 'white', 
+              stroke = 2.0, 
+              size = 2.4, 
+              stat = 'identity', 
+              position = position_dodge(width = 0.9)) + 
+    geom_text(mapping = aes(y = rate, label = rate), 
+              fontface = 'bold', 
+              position = position_dodge(width = 0.9), 
+              vjust = -1.5,
+              hjust = 0.5) + 
+    coord_cartesian(ylim = c(0, max(tbl$freqen, tbl$rate, na.rm = TRUE) * 1.1)) +
+    scale_fill_manual(values = c('gray80', 'gray50')) +
+    scale_color_manual(values = c('black', 'red')) +
+    ggtitle(label = str_c('regYear', workGb, var, sep = ' ')) + 
+    mytheme + 
+    theme(axis.title = element_blank())
+}
+
+
+```
+
+```{r}
+drawBarLinePlot(data = dt, workGb = '전직원', var = 'growth')
+```
+
+```{r}
+drawBarLinePlot(data = dt, workGb = '전직원', var = 'recomm')
+```
+
+```{r}
+# install.packages('devtools')
+# library(devtools) # not supported on 3.6.1 Ver. 
+library(RColorBrewer)
+# install.packages('JLutils')
+library(JLutils)
+# install_github("larmarange/JLutils")
+```
+
+
+```{r}
+
+pts <- table(dt$onBoard, dt$starRate) %>% set_colnames(value = str_c('starRate', 1:5)) %>% as.data.frame() %>% set_colnames(value = c('onBoard', 'starRate', 'frequen'))
+
+# 나만의 팔레트를 생성합니다. 
+mypal <- brewer.pal(n = 9, name = 'Greys')
+
+# 그래프를 그립니다. 
+ggplot(data = pts) +
+  aes(x = onBoard, fill = starRate, weight = frequen) + 
+  geom_bar(position = 'fill', color = 'gray80') + 
+  geom_text(stat = 'fill_labels') + 
+  scale_fill_manual(values = mypal[3:7]) + 
+  ggtitle(label = 'afreecatv 전/현직원 별점평가 비중') + 
+  mytheme + 
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(family = 'NanumGothic'), 
+        axis.text.y = element_blank())
+```
+```{r}
+# 레이더 차트
+# install.packages("fmsb")
+library(fmsb)
+```
+```{r}
+# 평균 별점 데이터 프레임을 생성합니다. 
+# 한글로 처리시 unexpected token
+dt4radar1 <- dt %>% 
+  dplyr::summarize(
+    전체평가 = mean(별점평가),
+    승진기회 = mean(승진기회),
+    복지급여 = mean(복지급여), 
+    워라밸 = mean(워라밸), 
+    사내문화 = mean(사내문화), 
+    경영진 = mean(경영진)) %>% 
+  as.data.frame() 
+
+# 결과를 출력합니다. 
+print(x = dt4radar1)
+```
+
