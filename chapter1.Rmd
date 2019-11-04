@@ -28,8 +28,8 @@ library(tidyverse)
 URI <- "https://www.jobplanet.co.kr/users/sign_in"
 
 resp <- POST(url = URI, 
-             body = list('user[email]' = 'marugoon@naver.com',
-                         'user[password]' = 'alsrns77'))
+             body = list('user[email]' = '',
+                         'user[password]' = ''))
 
 status_code(x = resp)
 
