@@ -3,23 +3,6 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
-```{r}
-plot(cars)
-```
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-```{r}
-install.packages("tidyverse")
-```
-
 
 ```{r}
 # 필요한 패키지를 불러옵니다.
@@ -37,7 +20,8 @@ dt <- readRDS(file = './Company_Review_Data_afreecatv.RDS')
 ```
 
 ```{r}
-names(dt)
+# names(dt)
+names(dt) <- c("회사이름","회사코드","리뷰코드","직종구분","재직상태", "근무지역", "등록일자", "별점평가", '승진기회',  '복지급여', '워라밸', '사내문화', '경영진', '기업장점','기업단점', '바라는점','성장예상','추천여부')
 ```
 ```{r}
 head(dt)
@@ -49,19 +33,27 @@ head(dt)
 dt[, 8:13] <- sapply(X = dt[, 8:13], FUN = function(x) x / 20)
 
 # 추천여부 컬럼을 '추천'과 '비추'로 변환합니다.
-dt$recomm <- str_extract(string = dt$recomm, pattern = '추천(?= )')
-dt$recomm[is.na(x = dt$recomm) == TRUE] <- '비추'
+dt$`추천여부` <- str_extract(string = dt$`추천여부`, pattern = '추천(?= )')
+dt$`추천여부`[is.na(x = dt$`추천여부`) == TRUE] <- '비추'
 
 # 성장예상과 추천여부 컬럼을 범주형으로 변환합니다. 
-dt$growth <- factor(x = dt$growth)
-dt$recomm <- factor(x = dt$recomm)
+dt$`성장예상` <- factor(x = dt$`성장예상`)
+dt$`추천여부` <- factor(x = dt$`추천여부`)
 
 # 등록일자를 날짜형 벡터로 변환합니다.
-dt$regDate <- as.Date(x = dt$regDate, format = '%Y/%m/%d')
+dt$`등록일자` <- as.Date(x = dt$`등록일자`, format = '%Y/%m/%d')
 
 # 등록연도 컬럼을 추가합니다. 
-dt$regYear <- year(dt$regDate)
+dt$`등록연도` <- year(dt$`등록일자`)
+
+
+# dt <- dt[!(dt$`성장예상` == "NODATA"), ]
 ```
+
+```{r}
+head(dt)
+```
+
 ```{r}
 # setting flotlib conf.
 mytheme <- theme(
@@ -85,7 +77,7 @@ mytheme <- theme(
 drawBarPlot <- function(data, workGb, var) {
   
   # 빈도테이블을 생성합니다. 
-  tbl <- data[data$onBoard == workGb, c('comName', var)] %>% table() %>% t()
+  tbl <- data[data$`재직상태` == workGb, c('회사이름', var)] %>% table() %>% t()
 
   # 막대그래프를 그립니다. 
   bp <- barplot(height = tbl, 
@@ -103,10 +95,10 @@ drawBarPlot <- function(data, workGb, var) {
 par(mfrow = c(2, 2), family = 'NanumGothic', mar = c(5, 4, 4, 2))
 
 # 막대그래프를 그립니다. 
-drawBarPlot(data = dt, workGb = '전직원', var = 'recomm')
-drawBarPlot(data = dt, workGb = '전직원', var = 'growth')
-drawBarPlot(data = dt, workGb = '현직원', var = 'recomm')
-drawBarPlot(data = dt, workGb = '현직원', var = 'growth')
+drawBarPlot(data = dt, workGb = '전직원', var = '추천여부')
+drawBarPlot(data = dt, workGb = '전직원', var = '성장예상')
+drawBarPlot(data = dt, workGb = '현직원', var = '추천여부')
+drawBarPlot(data = dt, workGb = '현직원', var = '성장예상')
 ```
 ```{r}
 # install.packages("descr")
@@ -136,29 +128,29 @@ chisqTest <- function(var1, var2) {
 }
 
 # 재직상태 * 성장예상
-chisqTest(var1 = 'onBoard', var2 = 'growth')
+chisqTest(var1 = '재직상태', var2 = '성장예상')
 ```
 ```{r}
-chisqTest(var1 = 'onBoard', var2 = 'recomm')
+chisqTest(var1 = '재직상태', var2 = '추천여부')
 ```
 ```{r}
 drawBarLinePlot <- function(data, workGb, var) {
   
   # 등록연도가 없는 행을 삭제합니다. 
-  data <- data[complete.cases(data$regYear), ]
+  data <- data[complete.cases(data$`등록연도`), ]
   
-  if (var == "growth") {
+  if (var == "성장예상") {
     # 성장예상 데이터가 없는 경우(NODATA) 데이터 플임에서 삭제
-    data <- data[!(data$growth == "NODATA"), ]
+    data <- data[!(data$`성장예상` == "NODATA"), ]
   }
   
   # 빈도테이블을 생성합니다. 
   tbl <- data %>% 
-    dplyr::filter(onBoard == workGb & !is.na(eval(expr = parse(text = var)))) %>% 
-    select(c('regYear', var)) %>% 
-    group_by(regYear, eval(expr = parse(text = var))) %>% 
-    summarize(freqen = n()) %>% 
-    mutate(rate = (freqen / sum(freqen) * 100) %>% round(digits = 1L)) 
+    dplyr::filter(`재직상태` == workGb & !is.na(eval(expr = parse(text = var)))) %>% 
+    select(c('등록연도', var)) %>% 
+    group_by(`등록연도`, eval(expr = parse(text = var))) %>% 
+    summarize(`빈도` = n()) %>% 
+    mutate(`비중` = (`빈도` / sum(`빈도`) * 100) %>% round(digits = 1L)) 
   
   
   # 두 번째 컬럼명을 var로 변경합니다. 
@@ -167,35 +159,35 @@ drawBarLinePlot <- function(data, workGb, var) {
   
   # 홀수행의 비중을 NA로 치환합니다. 
   rowNums <- seq(from = 1, to = nrow(x = tbl), by = 2)
-  tbl$rate[rowNums] <- NA
+  tbl$`비중`[rowNums] <- NA
   
   # ggplot() 함수를 이용하여 막대그래프를 그립니다.
   ggplot(data = tbl, 
-         mapping = aes_string(x = 'regYear', y = 'freqen', fill = var)) + 
+         mapping = aes_string(x = '등록연도', y = '빈도', fill = var)) + 
     geom_bar(stat = 'identity', position = 'dodge') + 
-    geom_text(mapping = aes(label = freqen), 
+    geom_text(mapping = aes(label = `빈도`), 
               position = position_dodge(width = 0.9), 
               vjust = -1) + 
-    geom_line(mapping = aes_string(x = 'regYear', y = 'rate', color = var, group = var), 
+    geom_line(mapping = aes_string(x = '등록연도', y = '비중', color = var, group = var), 
               size = 1.2, 
               stat = 'identity', 
               position = position_dodge(width = 0.9)) +
-    geom_point(mapping = aes_string(x = 'regYear', y = 'rate', color = var, group = var), 
+    geom_point(mapping = aes_string(x = '등록연도', y = '비중', color = var, group = var), 
               shape = 21, 
               fill = 'white', 
               stroke = 2.0, 
               size = 2.4, 
               stat = 'identity', 
               position = position_dodge(width = 0.9)) + 
-    geom_text(mapping = aes(y = rate, label = rate), 
+    geom_text(mapping = aes(y = `비중`, label = `비중`), 
               fontface = 'bold', 
               position = position_dodge(width = 0.9), 
               vjust = -1.5,
               hjust = 0.5) + 
-    coord_cartesian(ylim = c(0, max(tbl$freqen, tbl$rate, na.rm = TRUE) * 1.1)) +
+    coord_cartesian(ylim = c(0, max(tbl$`빈도`, tbl$`비중`, na.rm = TRUE) * 1.1)) +
     scale_fill_manual(values = c('gray80', 'gray50')) +
     scale_color_manual(values = c('black', 'red')) +
-    ggtitle(label = str_c('regYear', workGb, var, sep = ' ')) + 
+    ggtitle(label = str_c('연도별', workGb, var, sep = ' ')) + 
     mytheme + 
     theme(axis.title = element_blank())
 }
@@ -204,33 +196,34 @@ drawBarLinePlot <- function(data, workGb, var) {
 ```
 
 ```{r}
-drawBarLinePlot(data = dt, workGb = '전직원', var = 'growth')
-```
-
-```{r}
-drawBarLinePlot(data = dt, workGb = '전직원', var = 'recomm')
+drawBarLinePlot(data = dt, workGb = '전직원', var = '성장예상')
+drawBarLinePlot(data = dt, workGb = '전직원', var = '추천여부')
+drawBarLinePlot(data = dt, workGb = '현직원', var = '성장예상')
+drawBarLinePlot(data = dt, workGb = '현직원', var = '추천여부')
 ```
 
 ```{r}
 # install.packages('devtools')
 # library(devtools) # not supported on 3.6.1 Ver. 
-# library(RColorBrewer)
-# install.packages('JLutils')
-library(JLutils)
 # install_github("larmarange/JLutils")
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(JLutils)
+
 ```
 
 
 ```{r}
 
-pts <- table(dt$onBoard, dt$starRate) %>% set_colnames(value = str_c('starRate', 1:5)) %>% as.data.frame() %>% set_colnames(value = c('onBoard', 'starRate', 'frequen'))
+pts <- table(dt$`재직상태`, dt$`별점평가`) %>% set_colnames(value = str_c('별점', 1:5)) %>% as.data.frame() %>% set_colnames(value = c('재직상태', '별점구분', '빈도수'))
 
 # 나만의 팔레트를 생성합니다. 
 mypal <- brewer.pal(n = 9, name = 'Greys')
 
 # 그래프를 그립니다. 
 ggplot(data = pts) +
-  aes(x = onBoard, fill = starRate, weight = frequen) + 
+  aes(x = `재직상태`, fill = `별점구분`, weight = `빈도수`) + 
   geom_bar(position = 'fill', color = 'gray80') + 
   geom_text(stat = 'fill_labels') + 
   scale_fill_manual(values = mypal[3:7]) + 
@@ -241,7 +234,210 @@ ggplot(data = pts) +
         axis.text.y = element_blank())
 ```
 ```{r}
-# install.packages("fmsb")
 library(fmsb)
+
+dt4radar1 <- dt %>%
+  dplyr::summarize(
+    `전체평가` = mean(`별점평가`),
+    `승진기회` = mean(`승진기회`),
+    `복지급여` = mean(`복지급여`),
+    `워라밸` = mean(`워라밸`),
+    `사내문화` = mean(`사내문화`),
+    `경영진` = mean(`경영진`)
+  ) %>% as.data.frame()
+
+print(x = dt4radar1)
+```
+```{r}
+# 그래픽 파라미터를 설정합니다. 
+par(mfrow = c(1, 1), mar = c(2, 1, 2, 1), family = 'NanumGothic')
+
+# 레이더 차트를 그립니다. 
+radarchart(df = rbind(5, 1, dt4radar1), 
+           axistype = 1, 
+           seg = 4, 
+           pty = 19, 
+           pcol = rgb(red = 51/255, green = 0/255, blue = 255/255, alpha = 1.0), 
+           plty = 1, 
+           plwd = 2, 
+           pfcol = rgb(red = 51/255, green = 0/255, blue = 255/255, alpha = 0.2), 
+           cglty = 1, 
+           cglwd = 2, 
+           cglcol = 'grey80', 
+           axislabcol = 'grey30', 
+           title = str_c(compNm, '의 평균 별점'), 
+           vlcex = 1.2, 
+           caxislabels = seq(from = 1, to = 5, by = 1) )
+```
+```{r}
+dt4radar2 <- dt %>%
+  group_by(`재직상태`) %>%
+  dplyr::summarize(
+    `전체평가` = mean(`별점평가`),
+    `승진기회` = mean(`승진기회`),
+    `복지급여` = mean(`복지급여`),
+    `워라밸` = mean(`워라밸`),
+    `사내문화` = mean(`사내문화`),
+    `경영진` = mean(`경영진`)
+  ) %>% as.data.frame()
+
+print(x = dt4radar2)
+```
+
+```{r}
+# 재직상태별 테두리와 채우기 색을 설정
+colorLines <- c(rgb(red = 255/255, green = 0/255, blue = 0/255, alpha = 1.0), 
+                rgb(red = 51/255, green = 0/255, blue = 255/255, alpha = 1.0))
+
+colorFills <- c(rgb(red = 255/255, green = 0/255, blue = 0/255, alpha = 0.2), 
+                rgb(red = 51/255, green = 0/255, blue = 255/255, alpha = 0.2))
+
+# 재직상태별 레이터 그래프를 하나의 하나의 그래프
+radarchart(df = rbind(5, 1, dt4radar2[, 2:7]),
+           axistype = 1,
+           seg = 4, 
+           pty = 19, 
+           pcol = colorLines, 
+           plty = 1, 
+           plwd = 2, 
+           #pdensity = 10, 
+           #pangle = 60, 
+           pfcol = colorFills, 
+           cglty = 1, 
+           cglwd = 2, 
+           cglcol = 'grey80', 
+           axislabcol = 'grey30', 
+           title = '재직상태별 평균 별점 비교',
+           vlcex = 1.2,
+           caxislabels = seq(from = 1, to = 5, by = 1) )
+
+# 범주를 추가합니다. 
+legend(x = 0.8,
+       y = 1.4,
+       legend = dt4radar2$`재직상태`,
+       bty = 'n',
+       pch = 20,
+       col = colorLines,
+       text.col = 'grey30',
+       cex = 1,
+       pt.cex = 2)
+```
+
+```{r}
+dt <- dt %>% select(c('승진기회', '복지급여', '워라밸', '사내문화', '경영진', '추천여부'))
+
+# head(dt)
+
+# 재현 가능하도록 seed 생성
+set.seed(seed = 123)
+
+idx <- sample(x = 2, size = nrow(x = dt), prob = c(0.7, 0.3), replace = TRUE)
+
+trset <- dt[idx == 1, ]
+teset <- dt[idx == 2, ]
+
+head(trset)
+head(teset)
+
+cat('the number of trset is ', nrow(x = trset), '!\n')
+cat('the number of teset is ', nrow(x = teset), '!\n')
+
+# 목표변수 비중 확인
+rbind(
+  dt$`추천여부` %>% table() %>% prop.table() %>% t(),
+  trset$`추천여부` %>% table() %>% prop.table() %>% t(),
+  teset$`추천여부` %>% table() %>% prop.table() %>% t()
+) %>% `*`(100) %>% round(digits = 2L) %>% set_rownames(c('전체', '훈련셋', '시험셋')) %>% print()
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+fit <- rpart(formula = `추천여부` ~ .,
+             data = trset,
+             method = 'class',
+             parms = list(split = 'gini'), 
+             control = rpart.control(minsplit = 10, cp = 0.01, maxdepth = 10))
+
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2), family = 'NanumGothic')
+
+print (x = fit)
+```
+
+```{r}
+rpart.plot(x = fit, main = '가지치기 전 추천모형')
+```
+
+```{r}
+printcp(x = fit)
+```
+
+```{r}
+plotcp(x = fit)
+abline(h = fit$cptable[, 'xerror'] %>% min(), col = 'red', lty = 2)
+```
+```{r}
+# xerror 이 낮을때 비용복잡도 
+bestCP <- fit$cptable[which.min(fit$cptable[, 'xerror']), "CP"]
+
+# 가지치기
+prn <- prune.rpart(tree = fit, cp = bestCP)
+
+print(x = prn)
+```
+```{r}
+rpart.plot(x = prn, main = '가지치기 후 추천모형')
+```
+
+```{r}
+# confusion matrix 를 활용한 평가
+#     Sensitivity(민감도), Specificity(특이도), Pos Pred Value(정밀도) -> 높을수록 좋다.
+library(e1071)
+
+real <- teset$`추천여부`
+
+pred <- predict(object = prn, newdata = teset, type = 'class')
+
+confusionMatrix(data = pred, reference = real, positive = '추천')
+```
+
+```{r}
+# confusion matrix 결과에 대한 기준 정리 : F1점수 or AUROC 값을 사용하면 된다.
+# F1 점수 : Sensitivity(민감도) * Pos Pred Value(정밀도),  0.7628866이면 분류 성능이 우수하다고 할 수 없다.
+library(MLmetrics)
+
+cat('F1 Score :', F1_Score(y_true = real, y_pred = pred, positive = '추천'), '\n')
+```
+```{r}
+# AUROC 는 ROC 커브의 아래 면적
+library(ROCR)
+library(pROC)
+
+
+```
+```{r}
+# ROC 커브를 그려 분류 성능 확인
+# 추정값 및 실제값이 범주형인 경우, 숫자 벡터로 변환
+predObj <- prediction(predictions = pred %>% as.numeric(), labels = real %>% as.numeric())
+# predObj <- prediction(predictions = as.numeric(pred), lables = as.numeric(real))
+
+# prediction object를 활용하여 performance 객체 생성 
+perform <- performance(prediction.obj = predObj, measure = 'tpr', x.measure = 'fpr')
+
+# ROC 커브
+plot(x = perform, main = str_c("[ROC & AUROC] ", compNm))
+
+lines(x = c(0, 1), y = c(0, 1), col = 'red', lty = 2)
+
+# AUROC 를 계산하고 ROC 커브 위에 출력
+auroc <- auc(response = real %>% as.numeric(), predictor = pred %>% as.numeric()) %>% round(digits = 4L)
+
+text(x = 0.9, y = 0, labels = str_c('AUROC : ', auroc), col = 'red')
+```
+
+```{r}
+
 ```
 
