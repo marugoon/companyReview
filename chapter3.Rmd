@@ -1,7 +1,14 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
+```{r}
+# extrafont::font_import(paths = NULL, recursive = TRUE, prompt = TRUE,pattern = NULL)
+library(extrafont)
+font_import(pattern = "D2")
+```
 
 ```{r}
 # 필요한 패키지를 불러옵니다.
@@ -146,9 +153,10 @@ length(bigramList)
 bigramNames = names(bigramList)
 
 # 최대 200개 까지만 확인
-top <- if (length(x = bigramList) >= 200) bigramNames[1:200] else bigramNames
+top <- if (length(x = bigramList) >= 100) bigramNames[1:100] else bigramNames
 print(top)
 ```
+
 ```{r}
 
 write.table(
@@ -171,7 +179,8 @@ write.table(
     quote = FALSE,
     file = './dictionary.txt',
     row.names = FALSE,
-    col.names = FALSE
+    col.names = FALSE,
+    fileEncoding = "utf-8"
 )
 ```
 ```{r}
@@ -211,6 +220,7 @@ checkTerms <- function(corpus, term) {
     corpus %>% sapply(FUN = `[[`, 'content') %>% str_detect(pattern = term) %>% sum() %>% print()
 }
 ```
+
 ```{r}
 checkTerms(corpus = corpus, term = '워라벨')
 checkTerms(corpus = corpus, term = '일삶균형')
@@ -331,7 +341,7 @@ mytheme <- theme(
   plot.title = element_text(size = 14, face = 'bold', hjust = 0.5),
   axis.title.x = element_text(color = 'blue', size = 12, face = 'bold'),
   axis.title.y = element_text(color = '#993333', size = 12, face = 'bold'),
-  axis.text.x = element_text(family = 'NanumGothic', size = 10, face = 'bold'),
+  axis.text.x = element_text(family = 'D2Coding', size = 10, face = 'bold'),
   axis.text.y = element_blank(), 
   axis.ticks.length = unit(0, 'cm'),
   panel.background = element_blank(),
@@ -372,7 +382,7 @@ if (nrow(x = wordDf) >= 300) wordCloud <- wordDf[1:300,] else wordCloud <- wordD
 wordcloud2(
   data = wordCloud,
   size = 0.8,
-  fontFamily = 'NanumGothic',
+  fontFamily = 'D2Coding',
   color = pal,
   backgroundColor = 'white',
   minRotation = -pi / 4,
@@ -391,7 +401,7 @@ treemap(
   title = '고빈도 단어 트리맵',
   index = c('word'),
   vSize = 'freq',
-  fontfamily.labels = 'NanumGothic',
+  fontfamily.labels = 'D2Coding',
   fontsize.labels = 14,
   palette = pal,
   border.col = 'white')
@@ -532,7 +542,7 @@ drawNetworkmap <- function(dtmObj, title, sparse, corr, prob, link, cex) {
     node.size = sna::degree(dat = netTerms),
     edge.size = 'edgeSize',
     legend.position = 'None',
-    family = 'NanumGothic') + 
+    family = 'D2Coding') + 
     labs(title = title) + 
     theme(plot.title = element_text(hjust = 0.5, face = 'bold'))
 }
@@ -578,11 +588,6 @@ dt4Networkmap2(recomm = '추천', sparse = 0.90, corr = 0.30, link = 2, cex = 3)
 ```
 
 ```{r}
-
-head(dt$`추천여부`)
-# checks <- texts$`추천여부` == recomm
-# dtmSub <- dtmTfIdf[rownames(x = dtmTfIdf) %in% texts$id[checks], ]
-    
-# dt4Networkmap2(recomm = '비추', sparse = 0.90, corr = 0.30, link = 2, cex = 3)
+dt4Networkmap2(recomm = '비추', sparse = 0.90, corr = 0.30, link = 2, cex = 3)
 ```
 
